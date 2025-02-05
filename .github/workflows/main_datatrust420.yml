@@ -55,4 +55,4 @@ jobs:
           app-name: 'Datatrust420'
           slot-name: 'Production'
           package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_602C61F4F08446A1A875C35458FE1732 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_204A2AC80D75444F913184762292EF54 }}
