@@ -5,12 +5,14 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UserSecretsId>2da24e79-bc92-4844-ae96-f2929c1d3ad6</UserSecretsId>
+		<ApplicationInsightsResourceId>/subscriptions/b458573c-fb0c-47a9-9ccf-2b4b267c944e/resourceGroups/DataTrust420/providers/microsoft.insights/components/Datatrust420</ApplicationInsightsResourceId>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.3.2" />
 		<PackageReference Include="Azure.Identity" Version="1.13.2" />
 		<PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.7.0" />
+		<PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.10" />
 		<PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.0" />
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.1" />
