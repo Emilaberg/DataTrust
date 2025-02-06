@@ -10,11 +10,21 @@ using Azure.Identity;
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
 
 var builder = WebApplication.CreateBuilder(args);
-//get connectionstring from keyvault
+
+// Get connection string from Key Vault
 var keyVaultUrl = builder.Configuration["KeyVaultUri"];
 if (!string.IsNullOrEmpty(keyVaultUrl))
 {
     builder.Configuration.AddAzureKeyVault(new Uri(keyVaultUrl), new DefaultAzureCredential());
+}
+
+// Fetch Google ClientId and ClientSecret from Key Vault
+var googleClientId = builder.Configuration["GoogleClientId"];
+var googleClientSecret = builder.Configuration["GoogleClientSecret"];
+
+if (string.IsNullOrEmpty(googleClientId) || string.IsNullOrEmpty(googleClientSecret))
+{
+    throw new InvalidOperationException("Google ClientId and ClientSecret must be provided.");
 }
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration["DefaultConnection"]));
@@ -32,12 +42,18 @@ builder.Services.AddAuthentication(options =>
         var serviceProvider = context.HttpContext.RequestServices;
         using var db = new AppDbContext(serviceProvider.GetRequiredService<DbContextOptions<AppDbContext>>());
 
-        string subject = context.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
-        string issuer = context.Principal.FindFirst(ClaimTypes.NameIdentifier).Issuer;
-        string name = context.Principal.FindFirst(ClaimTypes.Name).Value;
+        var principal = context.Principal;
+        if (principal == null)
+        {
+            context.RejectPrincipal();
+            return;
+        }
 
-        var account = db.Accounts
-            .FirstOrDefault(p => p.OpenIDIssuer == issuer && p.OpenIDSubject == subject);
+        string subject = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new InvalidOperationException("NameIdentifier claim is missing.");
+        string issuer = principal.FindFirst(ClaimTypes.NameIdentifier)?.Issuer ?? throw new InvalidOperationException("Issuer is missing.");
+        string name = principal.FindFirst(ClaimTypes.Name)?.Value ?? throw new InvalidOperationException("Name claim is missing.");
+
+        var account = db.Accounts.FirstOrDefault(p => p.OpenIDIssuer == issuer && p.OpenIDSubject == subject);
 
         if (account == null)
         {
@@ -61,22 +77,8 @@ builder.Services.AddAuthentication(options =>
 .AddOpenIdConnect("Google", options =>
 {
     options.Authority = "https://accounts.google.com";
-    /*
-    These two values (client ID and client secret) must be created in the Google Cloud Platform Console:
-    https://support.google.com/cloud/answer/6158849?hl=en
-    https://developers.google.com/identity/openid-connect/openid-connect
-    They must then be added to the project's "user secrets": right-click the project in Visual Studio and select "Manage User Secrets" and write the following JSON:
-    {
-       "Authentication": {
-           "Google": {
-               "ClientId": "...",
-               "ClientSecret": "..."
-           }
-       }
-    }
-    */
-    options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
-    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+    options.ClientId = googleClientId;
+    options.ClientSecret = googleClientSecret;
     options.ResponseType = OpenIdConnectResponseType.Code;
     options.CallbackPath = "/signin-oidc-google";
     options.Scope.Add("openid");
@@ -97,15 +99,9 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.AddRazorPages().AddRazorRuntimeCompilation();
-
-
-
-
 builder.Services.AddControllers();
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AccessControl>();
 builder.Services.Configure<Microsoft.ApplicationInsights.Extensibility.TelemetryConfiguration>(config =>
@@ -135,10 +131,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapRazorPages();
 app.MapControllers();
 
